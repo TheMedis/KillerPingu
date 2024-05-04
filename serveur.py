@@ -1,11 +1,12 @@
 import os, select, socket, sys, time
 import messages
 
-ADDR = ("127.0.0.1", 2010)
+ADDR = ("127.0.0.1", 2005)
 MAXBYTES = 4096
 
 
 serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 def test_print(string):
     print("\n--------------------\n")
@@ -44,7 +45,26 @@ def gerer_message_client(data, socket):
         print(f"({clients[socket]}): {message['message']}")
         envoyer_autres(data,socket)
 
+    elif message["type"] == "Message prive":
         
+        decoupage = message["message"].split(" ")
+        if len(decoupage) < 2:
+            envoi = messages.encoder_message("Message serveur","utilisation de la commande: @nom message","Serveur")
+            envoyer_direct(envoi.encode(),socket)
+        else:
+            pseudo_origine = message["pseudo"]
+            envoi = message["message"]
+            cible = decoupage[0][1:]
+            envoi = messages.encoder_message("Message prive",str.join(" ",decoupage[1:]),pseudo_origine)
+            trouve = False
+            for (socket_cible,pseudo_cible) in clients.items():
+                if cible == pseudo_cible:
+                    envoyer_direct(envoi.encode(),socket_cible)
+                    trouve = True
+                    break
+            if not trouve:
+                envoi = messages.encoder_message("Message serveur","utilisateur introuvable","Servuer")
+                envoyer_direct(envoi.encode(),socket)
 
 
 def fermer_serveur():
